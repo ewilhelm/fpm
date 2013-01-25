@@ -41,6 +41,12 @@ class FPM::Package::CPAN < FPM::Package
     self.architecture = found_bs > 0 ? 'native' : 'all'
 
 
+    self.name        = i['name'].downcase
+    self.version     = i['version'].sub(/^v/, '')
+    self.license     = i['license'].join(',')
+    self.description = i['abstract']
+    self.vendor      = i['author'].join(',')
+    self.url         = (i['resources']||{})['homepage']
 
   end
 
