@@ -50,9 +50,15 @@ class FPM::Package::CPAN < FPM::Package
     self.vendor      = i['author'].join(',')
     self.url         = (i['resources']||{})['homepage']
 
-    # dependencies
-    # 1. map module name to dist name via Parse::CPAN::Packages
-    # 2. expand comma-separated specs into multiple rows
+    # TODO +recommends?
+    deps = ((i['prereqs']||{})['runtime']||{})['requires']||{}
+    depmap = packages_to_dists(deps.keys)
+    self.dependencies += deps.map {|k,v|
+      # TODO 'fix' dep names accordingly
+      dist = depmap[k] or raise "no dist for dep #{k}!"
+      next if dist == 'perl'
+      v.split(/,\s+/).map {|req| "#{dist} #{req}"}
+    }.flatten
 
   end
 
@@ -71,6 +77,27 @@ class FPM::Package::CPAN < FPM::Package
         ::File.unlink(f)
       }
     }
+  end
+
+  def packages_to_dists (packages, details_file=nil)
+    details_file ||=
+      ::Dir.glob(ENV['HOME'] + '/.cpanm/sources/*/02packages.details.txt').
+        sort {|a,b| b.stat.mtime <=> a.stat.mtime} [0]
+
+    fh = File.open(details_file)
+    fh.each_line {|line| break if line == "\n"}
+    seeking = Hash[packages.map {|p| [p,true]}]
+    got = {}
+    fh.each_line {|line|
+      (p, v, f) = line.chomp.split(/\s+/, 3)
+      f or next
+      seeking.delete(p) or next
+      got[p] = f.match(%r{.*/(.*?)-[^-]+$})[1]
+      seeking.keys.length > 0 or break
+    }
+    warn "could not locate dists for #{seeking.keys.join(',')}" if
+      seeking.keys.length > 0
+    got
   end
 
 end
