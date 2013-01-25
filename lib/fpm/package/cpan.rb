@@ -33,8 +33,8 @@ class FPM::Package::CPAN < FPM::Package
     if File.exists?(archdir)
       ::Find.find(archdir) {|p|
         if p =~ /\.bs$/
-          Find.prune
           found_bs += 1
+          Find.prune
         end
       }
     end
