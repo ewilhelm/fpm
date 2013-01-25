@@ -40,13 +40,19 @@ class FPM::Package::CPAN < FPM::Package
     end
     self.architecture = found_bs > 0 ? 'native' : 'all'
 
-
+    # TODO 'fix' package names:
+    # debian = 'lib' + i['name'].downcase + '-perl' # XXX except libwww
+    # redhat = 'perl-' + i['name']
     self.name        = i['name'].downcase
     self.version     = i['version'].sub(/^v/, '')
     self.license     = i['license'].join(',')
     self.description = i['abstract']
     self.vendor      = i['author'].join(',')
     self.url         = (i['resources']||{})['homepage']
+
+    # dependencies
+    # 1. map module name to dist name via Parse::CPAN::Packages
+    # 2. expand comma-separated specs into multiple rows
 
   end
 
