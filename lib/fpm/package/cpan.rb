@@ -57,7 +57,11 @@ class FPM::Package::CPAN < FPM::Package
       # TODO 'fix' dep names accordingly
       dist = depmap[k] or raise "no dist for dep #{k}!"
       next if dist == 'perl'
-      v.split(/,\s+/).map {|req| "#{dist} #{req}"}
+      v.split(/,\s+/).map {|req|
+        req.sub!(/\bv(\d)/, '\1')
+        req = ">= #{req}" if req !~ /[<>=]/
+        "#{dist} #{req}"
+      }
     }.flatten
 
   end
