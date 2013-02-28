@@ -13,7 +13,7 @@ class FPM::Package::CPAN < FPM::Package
     raise "is not a directory" unless File.directory?(path)
 
     mymetajson = File.join(path, 'MYMETA.json')
-    raise "must have MYMETA.json file #{metajson}" unless
+    raise "must have MYMETA.json file #{mymetajson}" unless
       File.exists?(mymetajson)
 
     load_package_info(mymetajson)
