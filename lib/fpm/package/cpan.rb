@@ -82,6 +82,7 @@ class FPM::Package::CPAN < FPM::Package
     # TODO +recommends?
     deps = ((i['prereqs']||{})['runtime']||{})['requires']||{}
     depmap = packages_to_dists(deps.keys)
+    self.dependencies += ["perl >= #{perl_version}"]
     self.dependencies += deps.map {|k,v|
       # TODO 'fix' dep names accordingly
       next if k == 'perl'
@@ -147,6 +148,11 @@ class FPM::Package::CPAN < FPM::Package
 
   def fix_name(name)
     @name_fixer.call(name)
+  end
+
+  def perl_version
+    `#{attributes[:cpan_perl]} -e 'print $^V'`.chomp.
+      sub(/^v/, '')
   end
 
 end
