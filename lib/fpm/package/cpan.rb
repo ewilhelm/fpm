@@ -8,6 +8,21 @@ require "find"
 
 class FPM::Package::CPAN < FPM::Package
 
+  # TODO should really be getting this out of Makefile | Build
+  option '--perl', 'PERL_EXECUTABLE',
+    'Path to perl.', :default => 'perl'
+
+  # TODO option for cpanm dir / index file
+
+  option '--package-name-prefix', 'PREFIX-',
+    'Prefix for output package name', :default => nil 
+
+  option '--lowercase-package-name', :flag, 
+    'Lowercase package names (ala debian)', :default => false
+
+  option '--package-naming-scheme', 'SCHEME',
+    'Name packages like rpm|deb|pkg', :default => nil
+
   def input(package)
     path = package # TODO later: download + make
     raise "is not a directory" unless File.directory?(path)
@@ -15,6 +30,22 @@ class FPM::Package::CPAN < FPM::Package
     mymetajson = File.join(path, 'MYMETA.json')
     raise "must have MYMETA.json file #{mymetajson}" unless
       File.exists?(mymetajson)
+
+    @name_fixer = attributes[:cpan_package_naming_scheme] ?
+    {
+      'rpm' => ->(name) { 'perl-' + name },
+      'deb' => ->(name) { 'lib' + name.downcase + '-perl' },
+        # XXX except libwww ?
+      'solaris' => ->(name) { 'pm_' + name.downcase },
+    }[attributes[:cpan_package_naming_scheme]] ||
+      raise("invalid naming scheme #{
+        attributes[:cpan_package_naming_scheme]}")
+    : ->(name) {
+      (attributes[:cpan_package_name_prefix] ? 
+        (attributes[:cpan_package_name_prefix] + '-') : '') +
+      (attributes[:cpan_lowercase_package_name] ?
+        name.downcase : name)
+    }
 
     load_package_info(mymetajson)
 
@@ -41,9 +72,7 @@ class FPM::Package::CPAN < FPM::Package
     self.architecture = found_bs > 0 ? 'native' : 'all'
 
     # TODO 'fix' package names:
-    # debian = 'lib' + i['name'].downcase + '-perl' # XXX except libwww
-    # redhat = 'perl-' + i['name']
-    self.name        = i['name'].downcase
+    self.name        = fix_name(i['name'])
     self.version     = i['version'].sub(/^v/, '')
     self.license     = i['license'].join(',')
     self.description = i['abstract']
@@ -55,24 +84,25 @@ class FPM::Package::CPAN < FPM::Package
     depmap = packages_to_dists(deps.keys)
     self.dependencies += deps.map {|k,v|
       # TODO 'fix' dep names accordingly
+      next if k == 'perl'
       dist = depmap[k] or raise "no dist for dep #{k}!"
       next if dist == 'perl'
       v.split(/,\s+/).map {|req|
         req.sub!(/\bv(\d)/, '\1')
         req = ">= #{req}" if req !~ /[<>=]/
-        "#{dist} #{req}"
+        "#{fix_name(dist)} #{req}"
       }
-    }.flatten
+    }.flatten.select {|x| x}
 
   end
 
   def install_to_staging(path)
     # XXX the installbase or such is assumed to have been correct here
     ::Dir.chdir(path) {
-      run = File.exists?('Build') ?
-          ['./Build', 'install', '--destdir', staging_path]
-        : File.exists?('Makefile') ?
-          ['make', 'install', 'DESTDIR=' + staging_path]
+      run = File.exists?('Build') ? \
+          ['./Build', 'install', '--destdir', staging_path] \
+        : File.exists?('Makefile') ? \
+          ['make', 'install', 'DESTDIR=' + staging_path] \
         : (raise "no build / make artifacts found")
       safesystem(*run);
 
@@ -91,6 +121,7 @@ class FPM::Package::CPAN < FPM::Package
     fh = File.open(details_file)
     fh.each_line {|line| break if line == "\n"}
     seeking = Hash[packages.map {|p| [p,true]}]
+    seeking.delete('perl') # TODO should output have perl version dep?
     got = {}
     fh.each_line {|line|
       (p, v, f) = line.chomp.split(/\s+/, 3)
@@ -99,9 +130,23 @@ class FPM::Package::CPAN < FPM::Package
       got[p] = f.match(%r{.*/(.*?)-[^-]+$})[1]
       seeking.keys.length > 0 or break
     }
+
+    # check for core deps
+    seeking.keys.each {|k|
+      raise "invalid package name '#{k}'" if k =~ /[^a-z:_]/i
+      safesystem(attributes[:cpan_perl], "-m#{k}", '-e', 'exit')
+      seeking.delete(k)
+      got[k] = 'perl'
+    }
+
+    # TODO use fpm logger here?
     warn "could not locate dists for #{seeking.keys.join(',')}" if
       seeking.keys.length > 0
-    got
+    return got
+  end
+
+  def fix_name(name)
+    @name_fixer.call(name)
   end
 
 end
