@@ -107,9 +107,16 @@ class FPM::Package::CPAN < FPM::Package
         : (raise "no build / make artifacts found")
       safesystem(*run);
 
-      # TODO just Find.find the perllocal.pod files?
-      ::Dir.glob(staging_path + '/usr/lib/perl/*/perllocal.pod').each {|f|
-        ::File.unlink(f)
+      ::Find.find(staging_path) { |f|
+        if ::File.basename(f) == 'perllocal.pod'
+          ::File.unlink(f)
+          d = ::File.dirname(f);
+          while(d != staging_path) # walk up empty dirs
+            begin; ::Dir.rmdir(d); rescue; end
+            d = ::File.dirname(d)
+          end
+          ::Find.prune
+        end
       }
     }
   end
