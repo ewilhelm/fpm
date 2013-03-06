@@ -46,7 +46,7 @@ class FPM::Package::CPAN < FPM::Package
     : ->(name) {
       (attributes[:cpan_package_name_prefix] ? 
         (attributes[:cpan_package_name_prefix] + '-') : '') +
-      (attributes[:cpan_lowercase_package_name] ?
+      (attributes[:cpan_lowercase_package_name?] ?
         name.downcase : name)
     }
 
