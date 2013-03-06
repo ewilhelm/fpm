@@ -14,6 +14,9 @@ class FPM::Package::CPAN < FPM::Package
 
   # TODO option for cpanm dir / index file
 
+  option '--perl-package', 'PERL_PACKAGE',
+    'Package name for perl dependency.', :default => 'perl'
+
   option '--package-name-prefix', 'PREFIX-',
     'Prefix for output package name', :default => nil 
 
@@ -82,7 +85,8 @@ class FPM::Package::CPAN < FPM::Package
     # TODO +recommends?
     deps = ((i['prereqs']||{})['runtime']||{})['requires']||{}
     depmap = packages_to_dists(deps.keys)
-    self.dependencies += ["perl >= #{perl_version}"]
+    self.dependencies +=
+      [attributes[:cpan_perl_package] + " >= #{perl_version}"]
     self.dependencies += deps.map {|k,v|
       # TODO 'fix' dep names accordingly
       next if k == 'perl'
