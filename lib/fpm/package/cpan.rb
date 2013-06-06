@@ -145,7 +145,7 @@ class FPM::Package::CPAN < FPM::Package
 
     # check for core deps
     seeking.keys.each {|k|
-      raise "invalid package name '#{k}'" if k =~ /[^a-z:_]/i
+      raise "invalid package name '#{k}'" if k =~ /[^a-z0-9:_]/i
       safesystem(attributes[:cpan_perl], "-m#{k}", '-e', 'exit')
       seeking.delete(k)
       got[k] = 'perl'
