@@ -115,6 +115,7 @@ class FPM::Package::CPAN < FPM::Package
           ].compact.flatten \
         : File.exists?('Makefile') ? \
           ['make', 'install', 'DESTDIR=' + staging_path,
+            'INSTALLDIRS=site',
           # TODO none of this matters at install time?
           # INSTALLMAN1DIR=none INSTALLMAN3DIR=none -
           # INST_MAN1DIR=/scrap, INST_MAN3DIR=/scrap'.
