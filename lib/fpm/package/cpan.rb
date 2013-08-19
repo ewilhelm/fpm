@@ -26,6 +26,9 @@ class FPM::Package::CPAN < FPM::Package
   option '--package-naming-scheme', 'SCHEME',
     'Name packages like rpm|deb|pkg', :default => nil
 
+  option '--man-pages', :flag,
+    'Generate man files.', :default => true
+
   def input(package)
     path = package # TODO later: download + make
     raise "is not a directory" unless File.directory?(path)
@@ -105,11 +108,24 @@ class FPM::Package::CPAN < FPM::Package
     # XXX the installbase or such is assumed to have been correct here
     ::Dir.chdir(path) {
       run = File.exists?('Build') ? \
-          ['./Build', 'install', '--destdir', staging_path] \
+          ['./Build', 'install', '--destdir', staging_path,
+            attributes[:cpan_man_pages] ? nil \
+            : ['--install_path', 'bindoc=/scrap',
+              '--install_path', 'libdoc=/scrap']
+          ].compact.flatten \
         : File.exists?('Makefile') ? \
-          ['make', 'install', 'DESTDIR=' + staging_path] \
+          ['make', 'install', 'DESTDIR=' + staging_path,
+          # TODO none of this matters at install time?
+          # INSTALLMAN1DIR=none INSTALLMAN3DIR=none -
+          # INST_MAN1DIR=/scrap, INST_MAN3DIR=/scrap'.
+          ] \
         : (raise "no build / make artifacts found")
       safesystem(*run);
+
+      # cleanup the docs
+      unless attributes[:cpan_man_pages]
+        ::FileUtils.rmtree(::File.join(staging_path, '/scrap/'))
+      end
 
       ::Find.find(staging_path) { |f|
         if ::File.basename(f) == 'perllocal.pod'
