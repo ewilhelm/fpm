@@ -116,10 +116,9 @@ class FPM::Package::CPAN < FPM::Package
         : File.exists?('Makefile') ? \
           ['make', 'install', 'DESTDIR=' + staging_path,
             'INSTALLDIRS=site',
-          # TODO none of this matters at install time?
-          # INSTALLMAN1DIR=none INSTALLMAN3DIR=none -
-          # INST_MAN1DIR=/scrap, INST_MAN3DIR=/scrap'.
-          ] \
+            attributes[:cpan_man_pages] ? nil \
+            : ['INST_MAN1DIR=/scrap', 'INST_MAN3DIR=/scrap'],
+          ].compact.flatten \
         : (raise "no build / make artifacts found")
       safesystem(*run);
 
