@@ -144,7 +144,7 @@ class FPM::Package::CPAN < FPM::Package
   def packages_to_dists (packages, details_file=nil)
     details_file ||=
       ::Dir.glob(ENV['HOME'] + '/.cpanm/sources/*/02packages.details.txt').
-        sort {|a,b| b.stat.mtime <=> a.stat.mtime} [0]
+        sort {|a,b| File::Stat.new(b).mtime <=> File::Stat.new(a).mtime} [0]
 
     fh = File.open(details_file)
     fh.each_line {|line| break if line == "\n"}
