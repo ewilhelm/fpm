@@ -87,7 +87,7 @@ class FPM::Package::CPAN < FPM::Package
 
     # TODO +recommends?
     deps = ((i['prereqs']||{})['runtime']||{})['requires']||{}
-    depmap = packages_to_dists(deps.keys)
+    depmap = packages_to_dists(deps)
     self.dependencies +=
       [attributes[:cpan_perl_package] + " >= #{perl_version}"]
     self.dependencies += deps.map {|k,v|
@@ -148,23 +148,33 @@ class FPM::Package::CPAN < FPM::Package
 
     fh = File.open(details_file)
     fh.each_line {|line| break if line == "\n"}
-    seeking = Hash[packages.map {|p| [p,true]}]
+    seeking = packages.dup
     seeking.delete('perl') # TODO should output have perl version dep?
     got = {}
+
+    # get the corelist to avoid extraneous deps
+    core = Hash[*%x{#{attributes[:cpan_perl]} -MModule::CoreList \
+      -Mstrict -Mwarnings -E '
+        my $h = Module::CoreList::find_version($^V->numify) or die;
+        say "$_\\t", $h->{$_} || "" for sort keys %$h
+      '}.split(/\n/).map {|l| l.split(/\t/, 2)}.flatten]
+    seeking.each_key {|p|
+      core[p] or next
+      # version in core may be exists+undefined => so what?
+      if core[p] == '' or
+          ::Gem::Version.new(core[p]) >= ::Gem::Version.new(seeking[p])
+        seeking.delete(p)
+        got[p] = 'perl'
+      end
+    }
+
+
     fh.each_line {|line|
       (p, v, f) = line.chomp.split(/\s+/, 3)
       f or next
       seeking.delete(p) or next
       got[p] = f.match(%r{.*/(.*?)-[^-]+$})[1]
       seeking.keys.length > 0 or break
-    }
-
-    # check for core deps
-    seeking.keys.each {|k|
-      raise "invalid package name '#{k}'" if k =~ /[^a-z0-9:_]/i
-      safesystem(attributes[:cpan_perl], "-m#{k}", '-e', 'exit')
-      seeking.delete(k)
-      got[k] = 'perl'
     }
 
     # TODO use fpm logger here?
