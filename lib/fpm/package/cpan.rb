@@ -152,6 +152,7 @@ class FPM::Package::CPAN < FPM::Package
     seeking.delete('perl') # TODO should output have perl version dep?
     got = {}
 
+    vvv = ->(version){ ::Gem::Version.new(version.to_s.gsub(/_/, '')) }
     # get the corelist to avoid extraneous deps
     core = Hash[*%x{#{attributes[:cpan_perl]} -MModule::CoreList \
       -Mstrict -Mwarnings -E '
@@ -161,8 +162,7 @@ class FPM::Package::CPAN < FPM::Package
     seeking.each_key {|p|
       core[p] or next
       # version in core may be exists+undefined => so what?
-      if core[p] == '' or
-          ::Gem::Version.new(core[p]) >= ::Gem::Version.new(seeking[p])
+      if core[p] == '' or vvv[core[p]] >= vvv[seeking[p]]
         seeking.delete(p)
         got[p] = 'perl'
       end
