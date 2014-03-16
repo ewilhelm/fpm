@@ -25,7 +25,7 @@ class FPM::Package::Pkgin < FPM::Package
       "-c", build_path("comment"),
       "-d", build_path("description"),
       "-f", build_path("packlist"),
-      "-I", "/opt/local",
+      "-I", '/', # TODO prefix option?  "/opt/local", 
       "-p", staging_path, 
       "-U", output_path,
     ]
