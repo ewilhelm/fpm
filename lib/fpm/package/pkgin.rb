@@ -27,7 +27,7 @@ class FPM::Package::Pkgin < FPM::Package
       "-f", build_path("packlist"),
       "-I", "/opt/local",
       "-p", staging_path, 
-      "-U", "#{cwd}/#{name}-#{self.version}-#{iteration}.tgz",
+      "-U", output_path,
     ]
     safesystem("pkg_create", *args)
 
