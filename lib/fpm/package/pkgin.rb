@@ -5,16 +5,14 @@ class FPM::Package::Pkgin < FPM::Package
 
     File.write(build_path("build-info"), `pkg_info -X pkg_install | egrep '^(MACHINE_ARCH|OPSYS|OS_VERSION|PKGTOOLS_VERSION)'`)
 
-    cwd = ::Dir.pwd
-    ::Dir.chdir(staging_path)
-
     files = []
-    Find.find(".") do |path|
-      stat = File.lstat(path)
-      next unless stat.symlink? or stat.file?
-      files << path
+    ::Dir.chdir(staging_path) do
+      Find.find(".") do |path|
+        stat = File.lstat(path)
+        next unless stat.symlink? or stat.file?
+        files << path
+      end
     end
-    ::Dir.chdir(cwd)
 
     File.write(build_path("packlist"), files.sort.join("\n"))
 
